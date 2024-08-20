@@ -130,13 +130,15 @@ void wifi_init_sta(void) {
             portMAX_DELAY);
 
     if (bits & WIFI_CONNECTED_BIT) {
-        ESP_LOGI(TAG, "Connected in SSID:%s",
+        ESP_LOGI(TAG, "Connected in SSID: %s",
                  CONFIG_ESP_WIFI_SSID);
     } else if (bits & WIFI_FAIL_BIT) {
-        ESP_LOGW(TAG, "Connection fail:%s",
+        ESP_LOGW(TAG, "Connection fail: %s",
                  CONFIG_ESP_WIFI_PASSWORD);
     } else {
-        ESP_LOGE(TAG, "ERROR");
+        ESP_LOGE(TAG, "Error on Wi-fi connection!");
+        vTaskDelay(pdMS_TO_TICKS(5000));
+        esp_restart();
     }
 }
 #endif
@@ -154,9 +156,7 @@ void print_time(){
 }
 
 void on_got_time(struct timeval *tv){
-    ESP_LOGI(TAG2, "On got %lld", tv->tv_sec);
     print_time();
-
     xSemaphoreGive(got_time_semaphore);
 }
 
@@ -178,10 +178,11 @@ void timestamp_update(void *arg){
 }
 
 void app_main(void) {
-    ESP_LOGI(TAG1, "--------------- MCU begin ---------------");
+    ESP_LOGI(TAG1, "--------------- MCU code begin ---------------");
 
     gpio_reset_pin(GPIO_LED);
     gpio_set_direction(GPIO_LED, GPIO_MODE_OUTPUT);
+    gpio_set_pull_mode(GPIO_LED, GPIO_FLOATING);
     gpio_set_level(GPIO_LED, 1);
     
 #if (DISABLE_WIFI == 0)
@@ -209,14 +210,12 @@ void app_main(void) {
     esp_sntp_setservername(0, "pool.ntp.org");
     esp_sntp_set_time_sync_notification_cb(on_got_time);
 
-    ESP_LOGI(TAG1, "Waiting for time sync");
+    ESP_LOGI(TAG1, "Waiting for sync real time");
     xSemaphoreTake(got_time_semaphore, portMAX_DELAY);
 #endif
 
     gpio_set_level(GPIO_LED, 0);
     ESP_LOGI(TAG1, "Creating xTasks");
     xTaskCreate(uros_task, "uROS Task", 1024*4, NULL, 5, NULL);
-    xTaskCreate(lidar_task, "Lidar Task", 1024*8, NULL, 5, NULL);
-
-    while(1);
+    xTaskCreate(lidar_task, "Lidar Task", 1024*4, NULL, 4, NULL);
 }
