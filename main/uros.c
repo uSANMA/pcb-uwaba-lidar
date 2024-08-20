@@ -103,18 +103,20 @@ sensor_msgs__msg__LaserScan msgs_laserscan;
 static const int n_handles_pub = 1; //number of handles that will be added in executor (executor_add_...)
 
 void lidar_pub_callback() {
+    ESP_LOGI(TAG,"Sending to ROS2");
     rcl_ret_t rt = rcl_publish(&pub_msgs_laserscan, &msgs_laserscan, NULL);
-    if(RMW_RET_OK != rt) {
-        ESP_LOGE(TAG,"Error on publishing imu msgs!!");
-        ESP_LOGE(TAG,"Connection problem! > Restarting...");
-        vTaskDelay(pdMS_TO_TICKS(10000));
-        esp_restart();
-    }     
+    rcl_ret_t rt2 = rclc_executor_spin_some(&executor_pub_msgs, RCL_MS_TO_NS(100));
+    if((RMW_RET_OK != rt) && (RMW_RET_OK != rt2)) {
+        ESP_LOGE(TAG,"Error on publishing lidar msgs! > CODE: %d | CODE_SPIN: %d", (int)rt, (int)rt2);
+        while(1);
+        //vTaskDelay(pdMS_TO_TICKS(10000));
+        //esp_restart();
+    }
 }
 
 void init_msgs_laserscan(){
-    msgs_laserscan.header.frame_id.capacity = 10;
-    msgs_laserscan.header.frame_id.size = 11;
+    msgs_laserscan.header.frame_id.capacity = 1;
+    msgs_laserscan.header.frame_id.size = 1;
     msgs_laserscan.header.frame_id.data = (char*) malloc(msgs_laserscan.header.frame_id.capacity * sizeof(char));
     msgs_laserscan.header.frame_id.data = "laser_frame";
 
@@ -126,13 +128,15 @@ void init_msgs_laserscan(){
     msgs_laserscan.range_min = 0.13;
     msgs_laserscan.range_max = 16;
 
-    msgs_laserscan.ranges.capacity = sizeof(float) * 360;
-    msgs_laserscan.ranges.size = 10;
-    msgs_laserscan.ranges.data = (float*) malloc(msgs_laserscan.ranges.capacity * sizeof(float));
+    msgs_laserscan.ranges.capacity = 360;
+    msgs_laserscan.ranges.size = 360;
+    msgs_laserscan.ranges.data = (float*) malloc(360 * sizeof(float));
+    //msgs_laserscan.ranges.data = (float*) malloc(msgs_laserscan.ranges.capacity * sizeof(float));
+    //(float*) calloc(msgs_laserscan.ranges.capacity, sizeof(float));
 
-    msgs_laserscan.intensities.capacity = sizeof(float) * 360;
-    msgs_laserscan.intensities.size = 10;
-    msgs_laserscan.intensities.data = (float*) malloc(msgs_laserscan.intensities.capacity * sizeof(float));
+    //msgs_laserscan.intensities.capacity = 1;
+    //msgs_laserscan.intensities.size = 1;
+    //msgs_laserscan.intensities.data = (float*) malloc(msgs_laserscan.intensities.capacity * sizeof(float));
 }
 
 rcl_ret_t init_ping_struct(){
@@ -225,8 +229,9 @@ void uros_task(void * arg) {
 
     xSemaphoreGive(uros_boot_lidar);
 
-    ESP_LOGI(TAG,"Executor spin");
-    rclc_executor_spin(&executor_pub_msgs);
+    //ESP_LOGI(TAG,"Executor spin");
+    //rclc_executor_spin(&executor_pub_msgs);
+    while(1){taskYIELD();}
 
     ESP_LOGI(TAG,"Clear memory");
     CHECK(rclc_executor_fini(&executor_pub_msgs));

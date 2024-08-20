@@ -154,7 +154,7 @@ void print_time(){
 }
 
 void on_got_time(struct timeval *tv){
-    ESP_LOGI(TAG2, "On got %lld\n", tv->tv_sec);
+    ESP_LOGI(TAG2, "On got %lld", tv->tv_sec);
     print_time();
 
     xSemaphoreGive(got_time_semaphore);
@@ -215,8 +215,8 @@ void app_main(void) {
 
     gpio_set_level(GPIO_LED, 0);
     ESP_LOGI(TAG1, "Creating xTasks");
-    xTaskCreate(uros_task, "uROS Task", 512*16, NULL, 5, NULL);
-    xTaskCreate(lidar_task, "Lidar Task", 512*10, NULL, 4, NULL);
+    xTaskCreate(uros_task, "uROS Task", 1024*4, NULL, 5, NULL);
+    xTaskCreate(lidar_task, "Lidar Task", 1024*8, NULL, 5, NULL);
 
     while(1);
 }
